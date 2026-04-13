@@ -1,0 +1,191 @@
+# ==============================================================================
+#  SafeWatch AI — Complete Backend Requirements
+#  Python Version : 3.10.x  (3.10.12 recommended)
+#  Last Updated   : 2026
+#
+#  Sources scanned:
+#    ai_engine.py · camera_manager.py · camera_stream_optimizer.py
+#    camera_service.py · alert_manager.py · database.py · config.py
+#    cameras.py · detections.py · alerts.py · faces.py
+#    analytics.py · settings.py · stream.py
+# ==============================================================================
+
+
+# ── 1. WEB FRAMEWORK ──────────────────────────────────────────────────────────
+fastapi==0.111.1
+uvicorn[standard]==0.30.1          # ASGI server (includes websockets, httptools)
+python-multipart==0.0.9            # Required for UploadFile / multipart forms
+websockets==12.0                   # WebSocket support (used by uvicorn[standard])
+starlette==0.37.2                  # FastAPI dependency; StaticFiles + CORSMiddleware
+mediapipe                # MediaPipe Pose, Face Detection, etc.
+# ── 2. DATA VALIDATION & SETTINGS ─────────────────────────────────────────────
+pydantic==2.7.4                    # BaseModel used in every router file
+pydantic-settings==2.3.4           # BaseSettings in config.py
+python-dotenv==1.0.1               # Loads .env file (Settings.Config.env_file)
+
+
+# ── 3. DATABASE ───────────────────────────────────────────────────────────────
+sqlalchemy==2.0.31                 # ORM (async engine + async_sessionmaker in database.py)
+aiosqlite==0.20.0                  # Async SQLite driver -> "sqlite+aiosqlite:///"
+greenlet==3.0.3                    # Required by SQLAlchemy async on Python 3.10
+
+
+# ── 4. COMPUTER VISION ────────────────────────────────────────────────────────
+opencv-python==4.10.0.84           # cv2 - VideoCapture, VideoWriter, imencode, imwrite
+numpy==1.26.4                      # ndarray ops throughout every AI/camera file
+
+
+# ── 5. PYTORCH (CPU default — see GPU note below) ─────────────────────────────
+# CPU wheels - safe for any machine, no CUDA driver required
+torch==2.3.1
+torchvision==0.18.1                # Required internally by facenet-pytorch
+filterpy
+# GPU (NVIDIA CUDA 12.1) - run this INSTEAD of the two lines above:
+#
+#   pip install torch==2.3.1+cu121 torchvision==0.18.1+cu121 \
+#       --index-url https://download.pytorch.org/whl/cu121
+#
+# Then install the rest of this file normally.
+
+
+# ── 6. AI / DEEP LEARNING MODELS ──────────────────────────────────────────────
+
+# YOLO v8 - person detection (ai_engine._load_yolo / detect_persons)
+ultralytics==8.2.48
+
+# CLIP - action classification (ai_engine._load_clip / detect_action)
+transformers==4.42.3               # CLIPModel + CLIPProcessor
+tokenizers==0.19.1                 # Fast tokenizer backend (transformers dep)
+huggingface-hub==0.23.4            # Model download & caching
+
+# FaceNet / MTCNN - face detection + embeddings (ai_engine._load_facenet)
+facenet-pytorch==2.6.0             # MTCNN + InceptionResnetV1
+
+# Safetensors - faster/safer model weights loading (transformers optional dep)
+safetensors==0.4.3
+
+
+# ── 7. OPENVINO (Intel CPU/iGPU acceleration) ─────────────────────────────────
+# Used in ai_engine._try_load_ov_yolo; gracefully skipped if import fails.
+# Comment out if you are NOT on Intel hardware.
+openvino==2024.1.0
+
+
+# ── 8. IMAGE PROCESSING ───────────────────────────────────────────────────────
+Pillow==10.3.0                     # PIL - face image save/load in faces.py + alerts
+
+
+# ── 9. ASYNC UTILITIES ────────────────────────────────────────────────────────
+anyio==4.4.0                       # Async compatibility layer (FastAPI core dep)
+aiofiles==23.2.1                   # Async file I/O - serving media files
+httpx==0.27.0                      # Async HTTP client (camera health checks)
+
+
+# ── 10. MESSAGING / ALERT DELIVERY ───────────────────────────────────────────
+
+# SMS via Twilio (_send_sms in alert_manager.py)
+twilio==9.2.3
+
+# Email is handled via stdlib smtplib - no extra package needed
+
+
+# ── 11. SCHEDULING ────────────────────────────────────────────────────────────
+apscheduler==3.10.4                # Daily alert reset task registered in analytics.py
+
+
+# ── 12. SYSTEM / UTILITIES ────────────────────────────────────────────────────
+psutil==6.0.0                      # CPU/memory stats (camera_stream_optimizer, settings)
+python-dateutil==2.9.0             # Robust date parsing helpers
+ujson==5.10.0                      # Fast JSON - WebSocket broadcast payloads
+
+
+# ── 13. CONCURRENCY (stdlib - no install needed) ──────────────────────────────
+# concurrent.futures.ThreadPoolExecutor  -> stdlib
+# asyncio                                -> stdlib
+# threading                              -> stdlib
+# collections.deque                      -> stdlib
+
+
+# ==============================================================================
+#  OPTIONAL - uncomment to enable extra features
+# ==============================================================================
+
+# Face clustering for unknown persons (UnknownPerson table in database.py)
+# hdbscan==0.8.38.post1
+
+# Alternative clustering and ML metrics
+# scikit-learn==1.5.1
+
+# CSV / Excel export for analytics endpoints
+# pandas==2.2.2
+# openpyxl==3.1.4
+
+# WhatsApp desktop automation
+# pywhatkit==5.4
+
+# Prometheus metrics endpoint
+# prometheus-fastapi-instrumentator==7.0.0
+
+# RTSP source support via ffmpeg Python bindings
+# ffmpeg-python==0.2.0
+
+
+# ==============================================================================
+#  SYSTEM-LEVEL DEPENDENCIES  (NOT installable via pip)
+# ==============================================================================
+#
+#  ffmpeg
+#    Used in alert_manager._extract_via_ffmpeg() to trim alert video clips.
+#    Ubuntu/Debian : sudo apt-get install -y ffmpeg
+#    Windows       : choco install ffmpeg   OR  winget install ffmpeg
+#    macOS         : brew install ffmpeg
+#
+#  libgl1 + libglib2.0  (Linux servers / headless environments only)
+#    Required by OpenCV when there is no display server.
+#    Ubuntu/Debian : sudo apt-get install -y libgl1-mesa-glx libglib2.0-0
+#
+#  libsm6 + libxext6  (Linux CI/headless only)
+#    Ubuntu/Debian : sudo apt-get install -y libsm6 libxext6
+#
+# ==============================================================================
+
+
+# ==============================================================================
+#  QUICK INSTALL GUIDE
+# ==============================================================================
+#
+#  Step 1 - Create and activate virtual environment
+#    python3.10 -m venv .venv
+#    source .venv/bin/activate          (Windows: .venv\Scripts\activate)
+#
+#  Step 2 - Upgrade pip
+#    pip install --upgrade pip setuptools wheel
+#
+#  Step 3a - CPU install (default, works on any machine)
+#    pip install -r requirements.txt
+#
+#  Step 3b - GPU install (NVIDIA CUDA 12.1)
+#    pip install torch==2.3.1+cu121 torchvision==0.18.1+cu121 \
+#        --index-url https://download.pytorch.org/whl/cu121
+#    pip install -r requirements.txt
+#
+#  Step 4 - Run the backend
+#    uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+#
+# ==============================================================================
+
+
+# ==============================================================================
+#  VERIFY YOUR INSTALLATION
+# ==============================================================================
+#
+#  python -c "import torch; print('PyTorch:', torch.__version__, '| CUDA:', torch.cuda.is_available())"
+#  python -c "from ultralytics import YOLO; YOLO('yolov8n.pt'); print('YOLO: OK')"
+#  python -c "from facenet_pytorch import MTCNN, InceptionResnetV1; print('FaceNet: OK')"
+#  python -c "from transformers import CLIPModel, CLIPProcessor; print('CLIP: OK')"
+#  python -c "import cv2; print('OpenCV:', cv2.__version__)"
+#  python -c "import sqlalchemy; print('SQLAlchemy:', sqlalchemy.__version__)"
+#  python -c "from openvino import Core; print('OpenVINO: OK')"
+#  python -c "import fastapi; print('FastAPI:', fastapi.__version__)"
+#
+# ==============================================================================
